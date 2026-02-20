@@ -1,38 +1,10 @@
-import React, { useRef, useLayoutEffect, useState } from 'react';
+import React, { useRef, useLayoutEffect, useState, useCallback } from 'react';
 import gsap from 'gsap';
 import { scanContract } from '../../services/api';
 
-const MIN_CHARS = 300;
-const MAX_CHARS = 20000;
-
-// ── One-click demo contract ───────────────────────────────────────────────
-const SAMPLE_CONTRACT = `INDEPENDENT CONTRACTOR AGREEMENT
-
-This Independent Contractor Agreement ("Agreement") is entered into as of January 1, 2025, by and between TechCorp Inc. ("Client") and the undersigned consultant ("Consultant").
-
-1. SERVICES. Consultant agrees to provide software development services as directed by Client from time to time.
-
-2. COMPENSATION. Client shall pay Consultant $150 per hour, invoiced monthly.
-
-3. TERM. This Agreement commences on the date above and continues until terminated.
-
-4. TERMINATION. Client may terminate this Agreement at any time with 7 days written notice, with no kill fee or severance obligation.
-
-5. INTELLECTUAL PROPERTY. All work product, inventions, software, and deliverables created by Consultant during the term of this Agreement — including pre-existing tools and frameworks used by Consultant — shall be the exclusive property of Client.
-
-6. NON-COMPETE. For a period of 24 months following termination, Consultant shall not directly or indirectly engage in any business that competes with Client in North America, Europe, or Asia Pacific.
-
-7. NON-SOLICITATION. For a period of 18 months after termination, Consultant shall not solicit or hire any of Client's employees or contractors.
-
-8. INDEMNIFICATION. Consultant agrees to indemnify, defend, and hold harmless Client, its affiliates, officers, and employees from any and all claims, losses, damages, and liabilities, including attorneys' fees, arising from any act or omission of Consultant, regardless of negligence.
-
-9. LIMITATION OF LIABILITY. In no event shall Client be liable to Consultant for any indirect, incidental, or consequential damages. Client's total liability shall not exceed $500.
-
-10. CONFIDENTIALITY. Consultant shall maintain strict confidentiality of all Client information in perpetuity, even after termination of this Agreement.
-
-11. MODIFICATION. Client reserves the right to modify the terms of this Agreement, including compensation rates, with 7 days notice.
-
-12. GOVERNING LAW. This Agreement shall be governed by the laws of Delaware.`;
+const ACCEPTED_TYPES = ['.pdf', '.txt'];
+const MAX_SIZE_MB = 10;
+const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
 
 const severityConfig = {
     high: { bgBorder: 'border-red-500/30 hover:border-red-500/60', textColor: 'text-red-400', dotExtra: 'animate-pulse', label: 'High Risk' },
@@ -78,10 +50,67 @@ const ScoreRing = ({ score, riskLevel }) => {
     );
 };
 
-// ── Left Panel ─────────────────────────────────────────────────────────────
-const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSample, hasResult }) => {
-    const charCount = contractText.length;
-    const isValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS;
+// ── File type icons ────────────────────────────────────────────────────────
+const FileIcon = ({ ext }) => {
+    if (ext === 'pdf') {
+        return (
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                <text x="7" y="17" className="text-[7px] font-black fill-red-400" stroke="none">PDF</text>
+            </svg>
+        );
+    }
+    return (
+        <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+    );
+};
+
+// ── Left Panel: File Upload ────────────────────────────────────────────────
+const FileUploadPanel = ({ file, setFile, onScan, loading, hasResult }) => {
+    const [isDragOver, setIsDragOver] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const validateFile = useCallback((f) => {
+        const ext = f.name.split('.').pop().toLowerCase();
+        if (!['pdf', 'txt'].includes(ext)) {
+            return `Unsupported file type: .${ext} — Only PDF and TXT are accepted.`;
+        }
+        if (f.size > MAX_SIZE_BYTES) {
+            return `File too large: ${(f.size / (1024 * 1024)).toFixed(1)} MB. Max is ${MAX_SIZE_MB} MB.`;
+        }
+        return null;
+    }, []);
+
+    const [fileError, setFileError] = useState('');
+
+    const handleFile = useCallback((f) => {
+        const err = validateFile(f);
+        if (err) {
+            setFileError(err);
+            setFile(null);
+            return;
+        }
+        setFileError('');
+        setFile(f);
+    }, [validateFile, setFile]);
+
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const f = e.dataTransfer.files[0];
+        if (f) handleFile(f);
+    }, [handleFile]);
+
+    const handleDragOver = useCallback((e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+    }, []);
+
+    const handleDragLeave = useCallback(() => setIsDragOver(false), []);
+
+    const ext = file?.name?.split('.').pop().toLowerCase();
 
     return (
         <div className="flex flex-col h-full">
@@ -93,40 +122,91 @@ const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSamp
                         <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
                         <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50" />
                     </div>
-                    <span className="text-white/30 font-mono text-[10px] uppercase tracking-widest ml-1">contract_input.txt</span>
+                    <span className="text-white/30 font-mono text-[10px] uppercase tracking-widest ml-1">upload_contract</span>
                 </div>
-                <button
-                    onClick={onLoadSample}
-                    className="text-[10px] font-black text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 transition-all uppercase tracking-wider"
-                >
-                    ⚡ Load Sample
-                </button>
             </div>
 
-            {/* Textarea */}
-            <textarea
-                value={contractText}
-                onChange={(e) => setContractText(e.target.value)}
-                placeholder={"Paste your contract text here…\n\nOr click ⚡ Load Sample to try with a demo contract."}
-                className="flex-1 w-full bg-transparent text-white text-sm placeholder-white/20 focus:outline-none resize-none leading-relaxed font-mono"
-            />
+            {/* Drop zone */}
+            <div
+                className={`flex-1 flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition-all duration-300 cursor-pointer ${isDragOver
+                    ? 'border-emerald-400/60 bg-emerald-500/5'
+                    : file
+                        ? 'border-emerald-500/30 bg-emerald-500/[0.02]'
+                        : 'border-white/10 hover:border-white/20 bg-white/[0.01]'
+                    }`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+            >
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPTED_TYPES.join(',')}
+                    className="hidden"
+                    onChange={(e) => {
+                        const f = e.target.files[0];
+                        if (f) handleFile(f);
+                        e.target.value = '';
+                    }}
+                />
+
+                {file ? (
+                    /* ── File selected state ── */
+                    <div className="flex flex-col items-center gap-3 px-4 text-center">
+                        <div className="w-14 h-14 rounded-2xl border border-white/10 bg-white/[0.03] flex items-center justify-center">
+                            <FileIcon ext={ext} />
+                        </div>
+                        <div>
+                            <p className="text-white text-sm font-bold truncate max-w-[200px]">{file.name}</p>
+                            <p className="text-white/30 text-xs mt-0.5">
+                                {(file.size / 1024).toFixed(1)} KB · {ext?.toUpperCase()}
+                            </p>
+                        </div>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setFile(null);
+                                setFileError('');
+                            }}
+                            className="text-[10px] font-bold text-white/40 hover:text-red-400 uppercase tracking-wider transition-colors"
+                        >
+                            ✕ Remove
+                        </button>
+                    </div>
+                ) : (
+                    /* ── Empty state ── */
+                    <div className="flex flex-col items-center gap-3 px-6 text-center">
+                        <div className="w-14 h-14 rounded-2xl border border-white/10 bg-white/[0.02] flex items-center justify-center">
+                            <svg className="w-7 h-7 text-white/15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p className="text-white/40 text-sm font-bold">
+                                {isDragOver ? 'Drop your file here' : 'Drop contract file here'}
+                            </p>
+                            <p className="text-white/20 text-xs mt-1">
+                                or <span className="text-emerald-400/60 font-bold">browse</span> · PDF, TXT · max {MAX_SIZE_MB}MB
+                            </p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* File error */}
+            {fileError && (
+                <p className="text-red-400 text-xs font-medium mt-2 px-1">{fileError}</p>
+            )}
 
             {/* Footer */}
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
-                <span className={`text-[11px] font-bold transition-colors ${charCount === 0 ? 'text-white/20' :
-                    charCount < MIN_CHARS ? 'text-white/40' :
-                        charCount > MAX_CHARS ? 'text-red-400' : 'text-emerald-400'
-                    }`}>
-                    {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
-                    {charCount > 0 && charCount < MIN_CHARS && ` · ${MIN_CHARS - charCount} more needed`}
-                </span>
-
+            <div className="flex items-center justify-end mt-4 pt-4 border-t border-white/8">
                 <button
                     onClick={onScan}
-                    disabled={!isValid || loading}
+                    disabled={!file || loading}
                     className={`flex items-center gap-2 font-black px-7 py-2.5 rounded-xl text-sm tracking-wide transition-all duration-300 disabled:opacity-25 disabled:cursor-not-allowed ${hasResult
                         ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
-                        : 'bg-white text-black hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)]'
+                        : 'bg-white text-black hover:bg-emerald-400'
                         }`}
                 >
                     {loading ? (
@@ -170,7 +250,7 @@ const ResultsPanel = ({ loading, error, results }) => {
                 <div>
                     <p className="text-white/25 text-sm font-bold mb-1">No analysis yet</p>
                     <p className="text-white/15 text-xs max-w-[200px] leading-relaxed">
-                        Load a sample or paste your contract, then click <span className="text-white/30">Scan Contract</span>
+                        Upload a contract file, then click <span className="text-white/30">Scan Contract</span>
                     </p>
                 </div>
             </div>
@@ -188,7 +268,7 @@ const ResultsPanel = ({ loading, error, results }) => {
                 </div>
                 <div className="text-center">
                     <p className="text-white text-sm font-bold mb-1">Analyzing contract…</p>
-                    <p className="text-white/30 text-xs">Usually takes 5–15 seconds</p>
+                    <p className="text-white/30 text-xs">Extracting text & scanning for risks</p>
                 </div>
             </div>
         );
@@ -207,8 +287,12 @@ const ResultsPanel = ({ loading, error, results }) => {
         );
     }
 
-    const overall = overallBadge[results.overall_risk] || overallBadge.low;
-    const score = typeof results.risk_score === 'number' ? results.risk_score : null;
+    // RAG returns { clauses, risk: { overallRisk, summary, risks[] } }
+    const riskData = results.risk || results;
+    const riskMap = { red: 'high', yellow: 'medium', green: 'low' };
+    const riskLevel = riskMap[(riskData.overallRisk || '').toLowerCase()] || riskData.overall_risk || 'low';
+    const overall = overallBadge[riskLevel] || overallBadge.low;
+    const score = typeof riskData.risk_score === 'number' ? riskData.risk_score : null;
 
     return (
         <div className="h-full overflow-y-auto pr-2 space-y-4">
@@ -226,32 +310,33 @@ const ResultsPanel = ({ loading, error, results }) => {
                         {overall.label}
                     </span>
                     {results._demo_mode && (
-                        <span className="text-[9px] font-bold text-amber-400/70 uppercase tracking-wide">⚠ Demo mode — API unavailable</span>
+                        <span className="text-[9px] font-bold text-amber-400/70 uppercase tracking-wide">⚠ Demo mode — RAG unavailable</span>
                     )}
                 </div>
                 {score !== null && (
-                    <ScoreRing score={score} riskLevel={results.overall_risk} />
+                    <ScoreRing score={score} riskLevel={riskLevel} />
                 )}
             </div>
 
             {/* Summary */}
-            {results.summary && (
+            {riskData.summary && (
                 <div className={`${overall.bg} border ${overall.border} rounded-xl p-4`}>
                     <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${overall.text}`}>Summary</p>
-                    <p className="text-white/70 text-xs leading-relaxed">{results.summary}</p>
+                    <p className="text-white/70 text-xs leading-relaxed">{riskData.summary}</p>
                 </div>
             )}
 
             {/* Risk count */}
-            {results.risks?.length > 0 && (
+            {riskData.risks?.length > 0 && (
                 <p className="text-white/30 text-[10px] font-black uppercase tracking-widest px-1">
-                    {results.risks.length} Risk{results.risks.length !== 1 ? 's' : ''} Identified
+                    {riskData.risks.length} Risk{riskData.risks.length !== 1 ? 's' : ''} Identified
                 </p>
             )}
 
             {/* Risk cards */}
-            {results.risks?.map((risk, i) => {
-                const cfg = severityConfig[risk.severity] || severityConfig.low;
+            {riskData.risks?.map((risk, i) => {
+                const sev = (risk.severity || 'low').toLowerCase();
+                const cfg = severityConfig[sev] || severityConfig.low;
                 return (
                     <div key={i} className={`scan-risk-card bg-black border ${cfg.bgBorder} p-5 rounded-xl transition-colors`}>
                         <div className="flex justify-between items-start mb-2 gap-2">
@@ -280,32 +365,24 @@ const ResultsPanel = ({ loading, error, results }) => {
 const ScanContract = () => {
     const headingRef = useRef(null);
     const panelRef = useRef(null);
-    const [contractText, setContractText] = useState('');
+    const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [results, setResults] = useState(null);
 
     useLayoutEffect(() => {
-        // Pre-fill from Generate page if available
-        const prefill = sessionStorage.getItem('scan_prefill');
-        if (prefill) {
-            setContractText(prefill);
-            sessionStorage.removeItem('scan_prefill');
-        }
-
         const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
         tl.fromTo(headingRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 })
             .fromTo(panelRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.3');
     }, []);
 
     const handleScan = async () => {
-        const charCount = contractText.length;
-        if (charCount < MIN_CHARS || charCount > MAX_CHARS) return;
+        if (!file) return;
         setLoading(true);
         setError('');
         setResults(null);
         try {
-            const data = await scanContract(contractText);
+            const data = await scanContract(file);
             setResults(data);
             setTimeout(() => {
                 gsap.from('.scan-risk-card', {
@@ -336,7 +413,7 @@ const ScanContract = () => {
                         Scan Your <span className="text-emerald-400">Contract.</span>
                     </h1>
                     <p className="text-white/45 text-sm md:text-base max-w-xl mx-auto">
-                        Paste a contract on the left — risk analysis appears on the right.
+                        Upload a PDF or TXT file — risk analysis appears on the right.
                     </p>
                 </div>
 
@@ -347,12 +424,11 @@ const ScanContract = () => {
                 >
                     {/* LEFT */}
                     <div className="bg-[#080e1a] p-6 md:p-8 flex flex-col border-b lg:border-b-0 lg:border-r border-white/8">
-                        <InputPanel
-                            contractText={contractText}
-                            setContractText={setContractText}
+                        <FileUploadPanel
+                            file={file}
+                            setFile={setFile}
                             onScan={handleScan}
                             loading={loading}
-                            onLoadSample={() => setContractText(SAMPLE_CONTRACT)}
                             hasResult={!!results}
                         />
                     </div>

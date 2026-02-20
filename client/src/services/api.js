@@ -2,9 +2,13 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
 
-export const scanContract = async (contractText) => {
+export const scanContract = async (file) => {
     try {
-        const response = await axios.post(`${API_URL}/scan`, { contractText });
+        const formData = new FormData();
+        formData.append('contract', file);
+        const response = await axios.post(`${API_URL}/scan`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
         return response.data;
     } catch (error) {
         console.error('Scan API Error:', error);
