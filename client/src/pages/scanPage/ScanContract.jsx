@@ -79,7 +79,7 @@ const ScoreRing = ({ score, riskLevel }) => {
 };
 
 // ── Left Panel ─────────────────────────────────────────────────────────────
-const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSample }) => {
+const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSample, hasResult }) => {
     const charCount = contractText.length;
     const isValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS;
 
@@ -114,8 +114,8 @@ const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSamp
             {/* Footer */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
                 <span className={`text-[11px] font-bold transition-colors ${charCount === 0 ? 'text-white/20' :
-                        charCount < MIN_CHARS ? 'text-white/40' :
-                            charCount > MAX_CHARS ? 'text-red-400' : 'text-emerald-400'
+                    charCount < MIN_CHARS ? 'text-white/40' :
+                        charCount > MAX_CHARS ? 'text-red-400' : 'text-emerald-400'
                     }`}>
                     {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
                     {charCount > 0 && charCount < MIN_CHARS && ` · ${MIN_CHARS - charCount} more needed`}
@@ -124,7 +124,10 @@ const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSamp
                 <button
                     onClick={onScan}
                     disabled={!isValid || loading}
-                    className="flex items-center gap-2 bg-white text-black font-black px-7 py-2.5 rounded-xl text-sm tracking-wide hover:bg-emerald-400 transition-all duration-300 disabled:opacity-25 disabled:cursor-not-allowed shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)]"
+                    className={`flex items-center gap-2 font-black px-7 py-2.5 rounded-xl text-sm tracking-wide transition-all duration-300 disabled:opacity-25 disabled:cursor-not-allowed ${hasResult
+                        ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20'
+                        : 'bg-white text-black hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.15)] hover:shadow-[0_0_20px_rgba(16,185,129,0.35)]'
+                        }`}
                 >
                     {loading ? (
                         <>
@@ -132,6 +135,13 @@ const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSamp
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                             </svg>
                             Analyzing…
+                        </>
+                    ) : hasResult ? (
+                        <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            Re-Scan
                         </>
                     ) : (
                         <>
@@ -201,7 +211,7 @@ const ResultsPanel = ({ loading, error, results }) => {
     const score = typeof results.risk_score === 'number' ? results.risk_score : null;
 
     return (
-        <div className="h-full overflow-y-auto pr-1 space-y-4">
+        <div className="h-full overflow-y-auto pr-2 space-y-4">
             {/* Header row: filename + score ring */}
             <div className={`flex items-start justify-between pb-4 border-b border-white/8 sticky top-0 bg-[#0B1120] z-10`}>
                 <div className="flex flex-col gap-1 pt-1">
@@ -276,6 +286,13 @@ const ScanContract = () => {
     const [results, setResults] = useState(null);
 
     useLayoutEffect(() => {
+        // Pre-fill from Generate page if available
+        const prefill = sessionStorage.getItem('scan_prefill');
+        if (prefill) {
+            setContractText(prefill);
+            sessionStorage.removeItem('scan_prefill');
+        }
+
         const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
         tl.fromTo(headingRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 })
             .fromTo(panelRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.3');
@@ -326,21 +343,22 @@ const ScanContract = () => {
                 {/* Split Panel */}
                 <div
                     ref={panelRef}
-                    className="flex-1 grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden border border-white/10 shadow-2xl min-h-[600px]"
+                    className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden border border-white/10 shadow-2xl h-[72vh] min-h-[520px]"
                 >
                     {/* LEFT */}
-                    <div className="bg-[#080e1a] p-6 md:p-8 flex flex-col border-b lg:border-b-0 lg:border-r border-white/8 min-h-[340px] lg:min-h-0">
+                    <div className="bg-[#080e1a] p-6 md:p-8 flex flex-col border-b lg:border-b-0 lg:border-r border-white/8">
                         <InputPanel
                             contractText={contractText}
                             setContractText={setContractText}
                             onScan={handleScan}
                             loading={loading}
                             onLoadSample={() => setContractText(SAMPLE_CONTRACT)}
+                            hasResult={!!results}
                         />
                     </div>
 
                     {/* RIGHT */}
-                    <div className="bg-[#0B1120] p-6 md:p-8 flex flex-col min-h-[340px] lg:min-h-0">
+                    <div className="bg-[#0B1120] p-6 md:p-8 flex flex-col overflow-hidden">
                         <ResultsPanel loading={loading} error={error} results={results} />
                     </div>
                 </div>
