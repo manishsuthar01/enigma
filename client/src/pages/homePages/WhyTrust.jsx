@@ -20,13 +20,14 @@ const WhyTrust = () => {
 
     const features = [
         {
-            title: "Instant Audit",
-            desc: "Upload any PDF or paste text. Our AI analyzes 50+ pages in under 30 seconds, identifying key clauses instantly.",
+            title: 'No Contract Data Stored',
+            desc: 'Your contract data is never stored. We only process and analyze the data in real-time.',
             icon: (
                 <div className="bg-emerald-500/10 p-3 rounded-lg border border-emerald-500/20">
                     <svg className="w-6 h-6 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                 </div>
             )
+
         },
         {
             title: "Severity Scoring",
@@ -53,7 +54,7 @@ const WhyTrust = () => {
             {/* Section Header */}
             <div className="text-center mb-16">
                 <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter uppercase italic mb-4">
-                    Why Trust RiskScanner?
+                    Why Trust Legal-GPT?
                 </h2>
                 <p className="text-white/60 text-lg max-w-2xl mx-auto font-medium">
                     Enterprise-grade legal analysis powered by advanced LLMs, fine-tuned for contract law.

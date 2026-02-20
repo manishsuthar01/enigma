@@ -50,11 +50,26 @@ const HeroPage = () => {
                 and liability gaps in seconds.
             </p>
 
-            {/* Input Box - Brighter Border */}
-            <div ref={inputRef} className="relative w-full max-w-3xl group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-
-
+            {/* CTA Buttons */}
+            <div ref={inputRef} className="flex flex-col sm:flex-row items-center gap-4">
+                <a
+                    href="/scan"
+                    className="flex items-center gap-2 bg-emerald-400 text-black font-black px-8 py-4 rounded-2xl text-base hover:bg-white transition-all duration-300 shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:shadow-[0_0_40px_rgba(255,255,255,0.2)]"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Scan a Contract — Free
+                </a>
+                <a
+                    href="/generate"
+                    className="flex items-center gap-2 bg-white/5 border border-white/20 text-white font-bold px-8 py-4 rounded-2xl text-base hover:bg-white/10 hover:border-white/40 transition-all duration-300"
+                >
+                    Generate a Contract
+                    <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
             </div>
 
             {/* Trust Badges - Pure White but smaller */}

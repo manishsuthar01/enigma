@@ -5,44 +5,113 @@ import { scanContract } from '../../services/api';
 const MIN_CHARS = 300;
 const MAX_CHARS = 20000;
 
+// ── One-click demo contract ───────────────────────────────────────────────
+const SAMPLE_CONTRACT = `INDEPENDENT CONTRACTOR AGREEMENT
+
+This Independent Contractor Agreement ("Agreement") is entered into as of January 1, 2025, by and between TechCorp Inc. ("Client") and the undersigned consultant ("Consultant").
+
+1. SERVICES. Consultant agrees to provide software development services as directed by Client from time to time.
+
+2. COMPENSATION. Client shall pay Consultant $150 per hour, invoiced monthly.
+
+3. TERM. This Agreement commences on the date above and continues until terminated.
+
+4. TERMINATION. Client may terminate this Agreement at any time with 7 days written notice, with no kill fee or severance obligation.
+
+5. INTELLECTUAL PROPERTY. All work product, inventions, software, and deliverables created by Consultant during the term of this Agreement — including pre-existing tools and frameworks used by Consultant — shall be the exclusive property of Client.
+
+6. NON-COMPETE. For a period of 24 months following termination, Consultant shall not directly or indirectly engage in any business that competes with Client in North America, Europe, or Asia Pacific.
+
+7. NON-SOLICITATION. For a period of 18 months after termination, Consultant shall not solicit or hire any of Client's employees or contractors.
+
+8. INDEMNIFICATION. Consultant agrees to indemnify, defend, and hold harmless Client, its affiliates, officers, and employees from any and all claims, losses, damages, and liabilities, including attorneys' fees, arising from any act or omission of Consultant, regardless of negligence.
+
+9. LIMITATION OF LIABILITY. In no event shall Client be liable to Consultant for any indirect, incidental, or consequential damages. Client's total liability shall not exceed $500.
+
+10. CONFIDENTIALITY. Consultant shall maintain strict confidentiality of all Client information in perpetuity, even after termination of this Agreement.
+
+11. MODIFICATION. Client reserves the right to modify the terms of this Agreement, including compensation rates, with 7 days notice.
+
+12. GOVERNING LAW. This Agreement shall be governed by the laws of Delaware.`;
+
 const severityConfig = {
-    high: { color: 'red', bgBorder: 'border-red-500/30 hover:border-red-500/60', textColor: 'text-red-400', dotExtra: 'animate-pulse', label: 'High Risk' },
-    medium: { color: 'amber', bgBorder: 'border-amber-500/30 hover:border-amber-500/60', textColor: 'text-amber-400', dotExtra: '', label: 'Medium Risk' },
-    low: { color: 'emerald', bgBorder: 'border-emerald-500/30', textColor: 'text-emerald-400', dotExtra: '', label: 'Low Risk' },
+    high: { bgBorder: 'border-red-500/30 hover:border-red-500/60', textColor: 'text-red-400', dotExtra: 'animate-pulse', label: 'High Risk' },
+    medium: { bgBorder: 'border-amber-500/30 hover:border-amber-500/60', textColor: 'text-amber-400', dotExtra: '', label: 'Medium Risk' },
+    low: { bgBorder: 'border-emerald-500/30', textColor: 'text-emerald-400', dotExtra: '', label: 'Low Risk' },
 };
 
 const overallBadge = {
-    high: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', label: 'High Risk' },
-    medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Medium Risk' },
-    low: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', label: 'Low Risk' },
+    high: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', scoreColor: 'text-red-400', label: 'High Risk' },
+    medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', scoreColor: 'text-amber-400', label: 'Medium Risk' },
+    low: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', text: 'text-emerald-400', scoreColor: 'text-emerald-400', label: 'Low Risk' },
 };
 
-// ── Left Panel: Contract Input ──────────────────────────────────────────────
-const InputPanel = ({ contractText, setContractText, onScan, loading }) => {
+// ── Risk Score Ring ────────────────────────────────────────────────────────
+const ScoreRing = ({ score, riskLevel }) => {
+    const cfg = overallBadge[riskLevel] || overallBadge.low;
+    const radius = 28;
+    const circ = 2 * Math.PI * radius;
+    const offset = circ - (score / 100) * circ;
+    const strokeColor = riskLevel === 'high' ? '#ef4444' : riskLevel === 'medium' ? '#f59e0b' : '#10b981';
+
+    return (
+        <div className="flex flex-col items-center">
+            <div className="relative w-[72px] h-[72px]">
+                <svg viewBox="0 0 72 72" className="w-full h-full -rotate-90">
+                    <circle cx="36" cy="36" r={radius} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
+                    <circle
+                        cx="36" cy="36" r={radius} fill="none"
+                        stroke={strokeColor} strokeWidth="5"
+                        strokeDasharray={circ}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        style={{ filter: `drop-shadow(0 0 6px ${strokeColor}80)` }}
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className={`font-black text-lg leading-none ${cfg.scoreColor}`}>{score}</span>
+                    <span className="text-white/30 text-[8px] uppercase tracking-wider">/ 100</span>
+                </div>
+            </div>
+            <span className={`text-[9px] font-black uppercase tracking-widest mt-1.5 ${cfg.text}`}>{cfg.label}</span>
+        </div>
+    );
+};
+
+// ── Left Panel ─────────────────────────────────────────────────────────────
+const InputPanel = ({ contractText, setContractText, onScan, loading, onLoadSample }) => {
     const charCount = contractText.length;
     const isValid = charCount >= MIN_CHARS && charCount <= MAX_CHARS;
 
     return (
         <div className="flex flex-col h-full">
             {/* Panel header */}
-            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/8">
-                <div className="flex gap-1.5">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50" />
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-white/8">
+                <div className="flex items-center gap-2">
+                    <div className="flex gap-1.5">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50" />
+                    </div>
+                    <span className="text-white/30 font-mono text-[10px] uppercase tracking-widest ml-1">contract_input.txt</span>
                 </div>
-                <span className="text-white/30 font-mono text-[10px] uppercase tracking-widest ml-1">contract_input.txt</span>
+                <button
+                    onClick={onLoadSample}
+                    className="text-[10px] font-black text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 rounded-lg hover:bg-emerald-500/10 transition-all uppercase tracking-wider"
+                >
+                    ⚡ Load Sample
+                </button>
             </div>
 
-            {/* Textarea — grows to fill available space */}
+            {/* Textarea */}
             <textarea
                 value={contractText}
                 onChange={(e) => setContractText(e.target.value)}
-                placeholder="Paste your contract text here (minimum 300 characters)..."
+                placeholder={"Paste your contract text here…\n\nOr click ⚡ Load Sample to try with a demo contract."}
                 className="flex-1 w-full bg-transparent text-white text-sm placeholder-white/20 focus:outline-none resize-none leading-relaxed font-mono"
             />
 
-            {/* Footer bar */}
+            {/* Footer */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/8">
                 <span className={`text-[11px] font-bold transition-colors ${charCount === 0 ? 'text-white/20' :
                         charCount < MIN_CHARS ? 'text-white/40' :
@@ -78,20 +147,22 @@ const InputPanel = ({ contractText, setContractText, onScan, loading }) => {
     );
 };
 
-// ── Right Panel: AI Results ─────────────────────────────────────────────────
+// ── Right Panel ────────────────────────────────────────────────────────────
 const ResultsPanel = ({ loading, error, results }) => {
-    // Empty / loading / error states
     if (!loading && !error && !results) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-4">
-                <div className="w-14 h-14 rounded-2xl border border-white/10 flex items-center justify-center">
-                    <svg className="w-7 h-7 text-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center justify-center h-full text-center px-6 gap-5">
+                <div className="w-16 h-16 rounded-2xl border border-white/10 flex items-center justify-center bg-white/2">
+                    <svg className="w-8 h-8 text-white/15" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                     </svg>
                 </div>
-                <p className="text-white/20 text-sm font-medium max-w-[180px] leading-relaxed">
-                    Paste a contract on the left and click <span className="text-white/40 font-bold">Scan Contract</span>
-                </p>
+                <div>
+                    <p className="text-white/25 text-sm font-bold mb-1">No analysis yet</p>
+                    <p className="text-white/15 text-xs max-w-[200px] leading-relaxed">
+                        Load a sample or paste your contract, then click <span className="text-white/30">Scan Contract</span>
+                    </p>
+                </div>
             </div>
         );
     }
@@ -107,7 +178,7 @@ const ResultsPanel = ({ loading, error, results }) => {
                 </div>
                 <div className="text-center">
                     <p className="text-white text-sm font-bold mb-1">Analyzing contract…</p>
-                    <p className="text-white/30 text-xs">This usually takes 5–15 seconds</p>
+                    <p className="text-white/30 text-xs">Usually takes 5–15 seconds</p>
                 </div>
             </div>
         );
@@ -126,37 +197,45 @@ const ResultsPanel = ({ loading, error, results }) => {
         );
     }
 
-    // Full results
     const overall = overallBadge[results.overall_risk] || overallBadge.low;
+    const score = typeof results.risk_score === 'number' ? results.risk_score : null;
 
     return (
-        <div className="h-full overflow-y-auto pr-1 space-y-5 scan-results-panel">
-            {/* Panel header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/8 sticky top-0 bg-[#0B1120] pt-0 z-10">
-                <div className="flex items-center gap-2">
-                    <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        <div className="h-full overflow-y-auto pr-1 space-y-4">
+            {/* Header row: filename + score ring */}
+            <div className={`flex items-start justify-between pb-4 border-b border-white/8 sticky top-0 bg-[#0B1120] z-10`}>
+                <div className="flex flex-col gap-1 pt-1">
+                    <div className="flex items-center gap-2">
+                        <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                        </span>
+                        <span className="text-white/40 font-mono text-[10px] uppercase tracking-widest">analysis_report.json</span>
+                    </div>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border self-start ${overall.bg} ${overall.border} ${overall.text}`}>
+                        {overall.label}
                     </span>
-                    <span className="text-white/50 font-mono text-[10px] uppercase tracking-widest">analysis_report.json</span>
+                    {results._demo_mode && (
+                        <span className="text-[9px] font-bold text-amber-400/70 uppercase tracking-wide">⚠ Demo mode — API unavailable</span>
+                    )}
                 </div>
-                <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${overall.bg} ${overall.border} ${overall.text}`}>
-                    {overall.label}
-                </span>
+                {score !== null && (
+                    <ScoreRing score={score} riskLevel={results.overall_risk} />
+                )}
             </div>
 
             {/* Summary */}
             {results.summary && (
                 <div className={`${overall.bg} border ${overall.border} rounded-xl p-4`}>
-                    <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${overall.text}`}>Overall Assessment</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mb-2 ${overall.text}`}>Summary</p>
                     <p className="text-white/70 text-xs leading-relaxed">{results.summary}</p>
                 </div>
             )}
 
-            {/* Risk count label */}
+            {/* Risk count */}
             {results.risks?.length > 0 && (
-                <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">
-                    {results.risks.length} Risk{results.risks.length !== 1 ? 's' : ''} Found
+                <p className="text-white/30 text-[10px] font-black uppercase tracking-widest px-1">
+                    {results.risks.length} Risk{results.risks.length !== 1 ? 's' : ''} Identified
                 </p>
             )}
 
@@ -165,12 +244,12 @@ const ResultsPanel = ({ loading, error, results }) => {
                 const cfg = severityConfig[risk.severity] || severityConfig.low;
                 return (
                     <div key={i} className={`scan-risk-card bg-black border ${cfg.bgBorder} p-5 rounded-xl transition-colors`}>
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="flex justify-between items-start mb-2 gap-2">
                             <h4 className={`${cfg.textColor} font-bold text-sm flex items-center gap-2`}>
                                 <span className={`w-1.5 h-1.5 rounded-full bg-current flex-shrink-0 ${cfg.dotExtra}`} />
                                 {risk.title}
                             </h4>
-                            <span className={`text-[9px] font-black uppercase tracking-tighter ${cfg.textColor} opacity-60 ml-2 flex-shrink-0`}>
+                            <span className={`text-[9px] font-black uppercase tracking-tighter ${cfg.textColor} opacity-60 flex-shrink-0`}>
                                 {cfg.label}
                             </span>
                         </div>
@@ -187,7 +266,7 @@ const ResultsPanel = ({ loading, error, results }) => {
     );
 };
 
-// ── Main Page ───────────────────────────────────────────────────────────────
+// ── Main Page ──────────────────────────────────────────────────────────────
 const ScanContract = () => {
     const headingRef = useRef(null);
     const panelRef = useRef(null);
@@ -227,7 +306,7 @@ const ScanContract = () => {
         <section className="min-h-screen pt-28 pb-10 px-4 flex flex-col">
             <div className="w-full max-w-7xl mx-auto flex flex-col flex-1">
 
-                {/* Page heading */}
+                {/* Heading */}
                 <div ref={headingRef} className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/30 bg-emerald-500/5 text-emerald-400 text-[10px] font-black mb-5 uppercase tracking-[0.2em]">
                         <span className="relative flex h-2 w-2">
@@ -240,26 +319,27 @@ const ScanContract = () => {
                         Scan Your <span className="text-emerald-400">Contract.</span>
                     </h1>
                     <p className="text-white/45 text-sm md:text-base max-w-xl mx-auto">
-                        Paste your contract on the left — the AI analysis appears instantly on the right.
+                        Paste a contract on the left — risk analysis appears on the right.
                     </p>
                 </div>
 
-                {/* ── Split Panel ── */}
+                {/* Split Panel */}
                 <div
                     ref={panelRef}
                     className="flex-1 grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden border border-white/10 shadow-2xl min-h-[600px]"
                 >
-                    {/* LEFT — Input */}
+                    {/* LEFT */}
                     <div className="bg-[#080e1a] p-6 md:p-8 flex flex-col border-b lg:border-b-0 lg:border-r border-white/8 min-h-[340px] lg:min-h-0">
                         <InputPanel
                             contractText={contractText}
                             setContractText={setContractText}
                             onScan={handleScan}
                             loading={loading}
+                            onLoadSample={() => setContractText(SAMPLE_CONTRACT)}
                         />
                     </div>
 
-                    {/* RIGHT — Results */}
+                    {/* RIGHT */}
                     <div className="bg-[#0B1120] p-6 md:p-8 flex flex-col min-h-[340px] lg:min-h-0">
                         <ResultsPanel loading={loading} error={error} results={results} />
                     </div>
