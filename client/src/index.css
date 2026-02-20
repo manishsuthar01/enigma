@@ -46,3 +46,30 @@
 .risk-glow-amber {
   box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
 }
+
+/* ── Global Scrollbar Styling ──────────────────────────────────────────────── */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(16, 185, 129, 0.25) transparent;
+}
+
+/* Chrome / Edge / Safari */
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(16, 185, 129, 0.25);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(16, 185, 129, 0.45);
+}

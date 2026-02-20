@@ -4,21 +4,21 @@ import gsap from 'gsap';
 const RiskResults = () => {
     const resultsRef = useRef(null);
 
-    useEffect(() => {
-        gsap.fromTo(resultsRef.current,
-            { y: 50, opacity: 0 },
-            { y: 0, opacity: 1, duration: 1, ease: "power4.out" }
-        );
+    // useEffect(() => {
+    //     gsap.fromTo(resultsRef.current,
+    //         { y: 50, opacity: 0 },
+    //         { y: 0, opacity: 1, duration: 1, ease: "power4.out" }
+    //     );
 
-        gsap.from(".risk-card", {
-            x: 30,
-            opacity: 0,
-            stagger: 0.2,
-            duration: 0.8,
-            ease: "back.out(1.7)",
-            delay: 0.5
-        });
-    }, []);
+    //     gsap.from(".risk-card", {
+    //         x: 30,
+    //         opacity: 0,
+    //         stagger: 0.2,
+    //         duration: 0.8,
+    //         ease: "back.out(1.7)",
+    //         delay: 0.5
+    //     });
+    // }, []);
 
     return (
         <section ref={resultsRef} className="w-full max-w-7xl mx-auto mt-20 px-4 mb-20">
