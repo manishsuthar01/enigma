@@ -2,6 +2,7 @@ import React, { useRef, useLayoutEffect, useState } from 'react';
 import gsap from 'gsap';
 import { useNavigate } from 'react-router-dom';
 import { generateContract as generateContractApi } from '../../services/api';
+import { jsPDF } from 'jspdf';
 
 const CONTRACT_TYPES = [
     'Non-Disclosure Agreement (NDA)',
@@ -191,7 +192,10 @@ const OutputPanel = ({ loading, error, result, onScanClick }) => {
         );
     }
 
-    const contractText = result.contract || result.contract_text || result.text || result.content || JSON.stringify(result, null, 2);
+    const rawText = result.contract || result.contract_text || result.text || result.content || JSON.stringify(result, null, 2);
+    const [editableText, setEditableText] = useState(rawText);
+    const [isEdited, setIsEdited] = useState(false);
+    const contractText = editableText;
     const meta = result.metadata;
 
     return (
@@ -214,18 +218,116 @@ const OutputPanel = ({ loading, error, result, onScanClick }) => {
                     <span className="text-[9px] font-black text-emerald-400 border border-emerald-500/20 bg-emerald-500/5 px-2 py-1 rounded-full uppercase tracking-wider">
                         ✓ Generated
                     </span>
+                    {isEdited && (
+                        <span className="text-[9px] font-bold text-amber-400 border border-amber-500/20 bg-amber-500/5 px-2 py-1 rounded-full uppercase tracking-wider">
+                            ✎ Edited
+                        </span>
+                    )}
                 </div>
             </div>
 
-            {/* Scrollable contract text */}
+            {/* Editable contract text */}
             <div className="flex-1 overflow-y-auto mb-4 pr-2">
-                <pre className="text-white/75 text-[12px] leading-relaxed font-mono whitespace-pre-wrap break-words">
-                    {contractText}
-                </pre>
+                <p className="text-white/25 text-[10px] uppercase tracking-widest font-bold mb-2">✎ Click below to edit before downloading</p>
+                <textarea
+                    value={editableText}
+                    onChange={(e) => { setEditableText(e.target.value); setIsEdited(true); }}
+                    className="w-full h-full min-h-[300px] bg-transparent text-white/75 text-[12px] leading-relaxed font-mono resize-none focus:outline-none focus:ring-1 focus:ring-emerald-500/30 rounded-lg p-2 transition-all"
+                    spellCheck={false}
+                />
             </div>
 
             {/* Action bar */}
             <div className="flex items-center gap-3 pt-4 border-t border-white/8 flex-shrink-0">
+
+                <button
+                    onClick={() => {
+                        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                        const pageW = doc.internal.pageSize.getWidth();
+                        const pageH = doc.internal.pageSize.getHeight();
+                        const margin = 20;
+                        const usable = pageW - margin * 2;
+                        let y = margin;
+
+                        // ── Title ──
+                        const title = meta?.contract_type || 'Legal Contract';
+                        doc.setFont('helvetica', 'bold');
+                        doc.setFontSize(18);
+                        const titleLines = doc.splitTextToSize(title.toUpperCase(), usable);
+                        doc.text(titleLines, pageW / 2, y, { align: 'center' });
+                        y += titleLines.length * 8 + 4;
+
+                        // ── Date line ──
+                        doc.setFont('helvetica', 'normal');
+                        doc.setFontSize(9);
+                        doc.setTextColor(120);
+                        doc.text(`Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageW / 2, y, { align: 'center' });
+                        y += 8;
+
+                        // ── Divider ──
+                        doc.setDrawColor(200);
+                        doc.line(margin, y, pageW - margin, y);
+                        y += 10;
+
+                        // ── Body (paragraph-aware) ──
+                        const lineH = 5;
+                        const blankGap = 3;
+                        const paragraphs = contractText.split('\n');
+                        const headingRe = /^\d+\.\s+[A-Z]/;
+                        let lastWasBlank = false;
+
+                        for (const rawLine of paragraphs) {
+                            const trimmed = rawLine.trim();
+
+                            // Collapse consecutive blank lines into one small gap
+                            if (!trimmed) {
+                                if (!lastWasBlank) {
+                                    y += blankGap;
+                                    lastWasBlank = true;
+                                }
+                                continue;
+                            }
+                            lastWasBlank = false;
+
+                            // Detect numbered section headings (e.g. "1. SCOPE OF AGREEMENT")
+                            const isHeading = headingRe.test(trimmed);
+                            if (isHeading) {
+                                y += 2; // extra space before heading
+                                doc.setFont('helvetica', 'bold');
+                            } else {
+                                doc.setFont('helvetica', 'normal');
+                            }
+                            doc.setFontSize(11);
+                            doc.setTextColor(30);
+
+                            // Wrap the line within page width
+                            const wrapped = doc.splitTextToSize(trimmed, usable);
+                            for (const wl of wrapped) {
+                                if (y + lineH > pageH - margin) {
+                                    doc.addPage();
+                                    y = margin;
+                                }
+                                doc.text(wl, margin, y);
+                                y += lineH;
+                            }
+                        }
+
+                        // ── Footer on last page ──
+                        doc.setFontSize(8);
+                        doc.setTextColor(160);
+                        doc.text('Generated by Legal-GPT', pageW / 2, pageH - 10, { align: 'center' });
+
+                        // ── Save ──
+                        const fileName = (meta?.contract_type || 'contract').toLowerCase().replace(/[^a-z0-9]+/g, '_');
+                        doc.save(`${fileName}_${Date.now()}.pdf`);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-white text-black font-bold py-3 rounded-xl hover:bg-emerald-400 transition-all duration-300 text-sm tracking-wide"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download PDF
+                </button>
 
                 <button
                     onClick={() => navigator.clipboard?.writeText(contractText)}

@@ -19,7 +19,7 @@ const Footer = () => {
                                 </svg>
                             </div>
                             <span className="text-white font-black text-base tracking-tighter">
-                                Enigma<span className="text-emerald-400">.</span>
+                                Legal-GPT<span className="text-emerald-400">.</span>
                             </span>
                         </div>
                         <p className="text-white/40 text-xs leading-relaxed max-w-xs">

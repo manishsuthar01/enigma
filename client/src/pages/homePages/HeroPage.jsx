@@ -55,7 +55,7 @@ const HeroPage = () => {
 
                 <a
                     href="/generate"
-                    className="flex items-center gap-2 bg-emerald-400 text-black font-bold px-8 py-4 rounded-2xl text-base hover:bg-white/10 hover:border-white/40 transition-all duration-300"
+                    className="flex items-center gap-2 bg-white text-black font-bold px-8 py-4 rounded-2xl text-base hover:bg-white/10 hover:border-white/40 transition-all duration-300"
                 >
                     Generate a Contract
                     <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,6 @@ const HeroPage = () => {
             {/* Trust Badges - Pure White but smaller */}
             <div className="animate-txt mt-12 flex flex-wrap justify-center gap-10 text-white font-bold text-[10px] tracking-[0.15em] uppercase">
                 <div className="flex items-center gap-2">✓ No Credit Card</div>
-                <div className="flex items-center gap-2">✓ SOC-2 Compliant</div>
                 <div className="flex items-center gap-2">✓ 256-bit Encryption</div>
             </div>
 

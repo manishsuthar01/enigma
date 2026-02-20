@@ -2,7 +2,7 @@
 
 @layer base {
   body {
-    @apply bg-[#030712] text-white antialiased selection:bg-emerald-500/30;
+    @apply bg-[#030712] text-white antialiased selection:bg-red-500/30;
     margin: 0;
     font-family: 'Plus Jakarta Sans', sans-serif;
   }
