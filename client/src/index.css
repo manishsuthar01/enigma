@@ -1,12 +1,48 @@
 @import "tailwindcss";
-@config "../tailwind.config.js";
 
 @layer base {
   body {
-    @apply bg-softwhite text-slate antialiased font-sans;
+    @apply bg-[#030712] text-white antialiased selection:bg-emerald-500/30;
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Instrument Sans', sans-serif;
   }
 }
 
-.risk-card-shadow {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+/* The Fixed Cyber-Legal Background */
+.global-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background-color: #000000;
+  /* Top emerald glow mimicking the screenshot */
+  background-image:
+    radial-gradient(circle at 50% -10%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at center, #0a0a0a 0%, #000000 100%);
+}
+
+/* The Dot Grid Overlay */
+.global-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse at center, black, transparent 90%);
+}
+
+/* Risk Card Glows */
+.risk-glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+.risk-glow-amber {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
 }

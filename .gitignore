@@ -1,0 +1,20 @@
+# Node modules
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Environment variables
+.env
+client/.env
+server/.env
+
+# Logs
+*.log
+build_log.txt
+
+# Build folders
+dist/
+build/
+
+# OS files
+.DS_Store
