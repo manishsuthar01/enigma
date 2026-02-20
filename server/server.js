@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
@@ -14,7 +15,10 @@ const PORT = process.env.PORT || 8080;
 // Helmet sets ~15 HTTP headers that protect against well-known web vulnerabilities
 // (XSS, clickjacking, MIME-sniffing, etc.)
 app.disable('x-powered-by');
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false,   // Vite injects inline scripts/styles
+    crossOriginEmbedderPolicy: false,
+}));
 
 // ── Body Parser with size limit ─────────────────────────────────────────────
 // Contracts max 20k chars ≈ ~20kb, so 50kb is generous but prevents abuse
@@ -60,21 +64,31 @@ app.use((req, _res, next) => {
     next();
 });
 
-// ── Routes ──────────────────────────────────────────────────────────────────
+// ── API Routes ──────────────────────────────────────────────────────────────
 app.use('/api/scan', require('./routes/scan'));
 app.use('/api/generate', require('./routes/generate'));
 
 // ── Health check ────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
-    res.send('Legal-GPT API is running ✅');
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', uptime: process.uptime() });
 });
 
-// ── 404 Handler — unknown routes ────────────────────────────────────────────
-app.use((req, res) => {
-    res.status(404).json({
-        error: `Route not found: ${req.method} ${req.originalUrl}`,
-        status: 404,
-    });
+// ── Serve Frontend Static Files ─────────────────────────────────────────────
+const clientDist = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientDist));
+
+// ── SPA Catch-All — serves index.html for all non-API routes ────────────────
+// This MUST come after API routes so /api/* is handled by Express first
+app.use((req, res, next) => {
+    // If the request is for an API route that wasn't matched, return 404 JSON
+    if (req.originalUrl.startsWith('/api')) {
+        return res.status(404).json({
+            error: `Route not found: ${req.method} ${req.originalUrl}`,
+            status: 404,
+        });
+    }
+    // Otherwise serve the SPA
+    res.sendFile(path.join(clientDist, 'index.html'));
 });
 
 // ── Central Error Handler ───────────────────────────────────────────────────
@@ -87,7 +101,8 @@ const server = app.listen(PORT, () => {
     console.log(`   RAG URL      : ${process.env.RAG_SERVER_URL || '⚠️  not set (mock mode)'}`);
     console.log(`   RAG Endpoint : ${process.env.RAG_SERVER_ENDPOINT || '/generate-contract'}`);
     console.log(`   Gemini Key   : ${process.env.GEMINI_API_KEY ? 'found ✅' : '⚠️  missing'}`);
-    console.log(`   Security     : helmet ✅ | rate-limit ✅ | error-handler ✅\n`);
+    console.log(`   Security     : helmet ✅ | rate-limit ✅ | error-handler ✅`);
+    console.log(`   Static files : ${clientDist}\n`);
 });
 
 server.on('error', (err) => {

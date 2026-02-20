@@ -1,0 +1,14 @@
+{
+    "name": "legal-gpt",
+    "version": "1.0.0",
+    "description": "Legal-GPT — AI-powered contract generator and risk scanner",
+    "scripts": {
+        "build": "cd client && npm install && npm run build",
+        "start": "cd server && npm install && node server.js",
+        "dev:client": "cd client && npm run dev",
+        "dev:server": "cd server && npm run server"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
