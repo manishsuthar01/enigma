@@ -6,14 +6,11 @@ import App from './App.jsx'
 
 // ── Smooth scrolling ──
 const lenis = new Lenis({
-  duration: 1.2,
-  orientation: "vertical",
-  lerp: 0.08,
-  wheelMultiplier: 0.5,
-  infinite: false,
-  gestureOrientation: "vertical",
-  normalizeWheel: true,
+  duration: 0.8,          // faster response
+  lerp: 0.12,             // less floaty
+  wheelMultiplier: 1,     // natural scroll strength
   smoothWheel: true,
+  normalizeWheel: false,
 });
 
 

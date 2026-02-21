@@ -8,17 +8,17 @@ const PublicLayout = () => {
     return (
         <div className="min-h-screen bg-[#050505] text-[#999] flex flex-col relative">
             {/* Universal DotGrid background */}
-            <div className="fixed inset-0 z-0 opacity-40">
+            <div className="fixed inset-0 z-0">
                 <DotGrid
-                    dotSize={5}
-                    gap={15}
-                    baseColor="#271E37"
-                    activeColor="#5227FF"
-                    proximity={70}
+                    dotSize={4}
+                    gap={18}
+                    baseColor="#3a2d5c"
+                    activeColor="#7c5cfc"
+                    proximity={130}
                     shockRadius={250}
                     shockStrength={5}
-                    resistance={950}
-                    returnDuration={0.5}
+                    resistance={750}
+                    returnDuration={1}
                 />
             </div>
 

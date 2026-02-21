@@ -19,7 +19,7 @@ const RiskDashboard = () => {
     }, []);
 
     return (
-        <section ref={dashboardRef} className="w-full max-w-container mx-auto py-2 px-6 relative z-10">
+        <section ref={dashboardRef} className="w-full max-w-container mx-auto py-20 px-6 relative z-10">
             {/* Header / Meta Info */}
             <div className="flex flex-col md:flex-row md:items-center justify-between bg-[#111] border-x border-t border-[#222] rounded-t-2xl px-6 py-4 gap-4">
                 <div className="flex items-center gap-4">
