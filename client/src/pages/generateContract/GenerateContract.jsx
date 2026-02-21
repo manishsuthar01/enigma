@@ -6,13 +6,10 @@ import { jsPDF } from 'jspdf';
 
 const CONTRACT_TYPES = [
     'Non-Disclosure Agreement (NDA)',
-    'Freelance Service Agreement',
-    'Employment Contract',
-    'Software License Agreement',
-    'Consulting Agreement',
-    'Sales Contract',
+    'Cloud Service Agreement',
     'Partnership Agreement',
-    'Lease Agreement',
+    'Design Partner Agreement',
+    'Professional Services Agreement',
 ];
 
 // ── Left Panel: Form ────────────────────────────────────────────────────────
