@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 
 const HeroPage = () => {
@@ -6,7 +6,6 @@ const HeroPage = () => {
     const inputRef = useRef(null);
 
     useLayoutEffect(() => {
-        // We use clear() to ensure no ghost opacities remain
         const tl = gsap.timeline({ defaults: { ease: "power4.out" } });
 
         tl.fromTo(".animate-txt",
@@ -21,53 +20,62 @@ const HeroPage = () => {
     }, []);
 
     return (
-        // Added a radial gradient to the center so the middle isn't pitch black
-        <section ref={heroRef} className="relative flex flex-col items-center justify-center min-h-screen pt-20 pb-20 px-4 overflow-hidden bg-[#000000] bg-[radial-gradient(circle_at_center,_#111111_0%,_#000000_100%)]">
+        <section ref={heroRef} className="relative flex flex-col items-center justify-center min-h-screen pt-20 pb-20 px-4 overflow-hidden">
 
-            {/* Grid Overlay - Increased opacity slightly for visibility */}
-            <div className="absolute inset-0 opacity-[0.15] pointer-events-none"
-                style={{ backgroundImage: `radial-gradient(#ffffff 1px, transparent 1px)`, backgroundSize: '50px 50px' }}>
-            </div>
+            {/* Subtle radial glow */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_600px_400px_at_50%_40%,_rgba(124,92,252,0.06)_0%,_transparent_70%)] pointer-events-none" />
 
-            {/* Badge - Forced White Text for visibility */}
-            <div className="animate-txt inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/40 bg-emerald-500/5 text-white text-[10px] font-black mb-8 uppercase tracking-[0.2em]">
-                <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
+            {/* Badge */}
+            <div className="animate-txt inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#222] bg-[#111] text-[#999] text-[10px] font-bold mb-8 uppercase tracking-[0.2em]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7c5cfc]" />
                 AI-Powered Contract Auditor
             </div>
 
-            {/* Main Headline - Solid White (No transparency) */}
-            <h1 className="animate-txt text-5xl md:text-8xl font-black text-center text-white tracking-tighter max-w-5xl mb-8 leading-[0.95]">
+            {/* Main Headline */}
+            <h1 className="animate-txt text-5xl md:text-8xl font-extrabold text-center text-white tracking-tighter max-w-5xl mb-8 leading-[0.95]">
                 Don't Sign Blindly. <br />
-                <span className="text-emerald-400 drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Scan for Risks.</span>
+                <span className="text-[#7c5cfc]">Scan for Risks.</span>
             </h1>
 
-            {/* Subtext - Increased contrast to 90% White */}
-            <p className="animate-txt text-white/90 text-lg md:text-2xl text-center max-w-3xl mb-12 leading-relaxed font-medium">
+            {/* Subtext */}
+            <p className="animate-txt text-[#999] text-lg md:text-xl text-center max-w-2xl mb-12 leading-relaxed">
                 The AI Legal Co-pilot that audits your contracts for predatory clauses
                 and liability gaps in seconds.
             </p>
 
             {/* CTA Buttons */}
             <div ref={inputRef} className="flex flex-col sm:flex-row items-center gap-4">
-
                 <a
-                    href="/generate"
-                    className="flex items-center gap-2 bg-white text-black font-bold px-8 py-4 rounded-2xl text-base hover:bg-white/10 hover:border-white/40 transition-all duration-300"
+                    href="/scan"
+                    className="flex items-center gap-2 bg-[#7c5cfc] text-white font-bold px-8 py-4 rounded-xl text-base hover:bg-[#6a4ce0] hover:scale-[1.02] transition-all duration-300"
                 >
-                    Generate a Contract
-                    <svg className="w-4 h-4 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    Scan a Contract
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                 </a>
+                <a
+                    href="/generate"
+                    className="flex items-center gap-2 border border-[#222] text-white font-semibold px-8 py-4 rounded-xl text-base hover:bg-[#111] hover:border-[#333] hover:scale-[1.02] transition-all duration-300"
+                >
+                    Generate a Contract
+                </a>
             </div>
 
-            {/* Trust Badges - Pure White but smaller */}
-            <div className="animate-txt mt-12 flex flex-wrap justify-center gap-10 text-white font-bold text-[10px] tracking-[0.15em] uppercase">
-                <div className="flex items-center gap-2">✓ No Credit Card</div>
-                <div className="flex items-center gap-2">✓ 256-bit Encryption</div>
+            {/* Trust Badges */}
+            <div className="animate-txt mt-14 flex flex-wrap justify-center gap-8 text-[#666] font-semibold text-[10px] tracking-[0.15em] uppercase">
+                <div className="flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-[#333]" />
+                    No Credit Card
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-[#333]" />
+                    256-bit Encryption
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="w-1 h-1 rounded-full bg-[#333]" />
+                    Zero Data Storage
+                </div>
             </div>
 
         </section>

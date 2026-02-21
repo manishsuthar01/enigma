@@ -7,22 +7,22 @@ export default {
     theme: {
         extend: {
             colors: {
-                navy: {
-                    DEFAULT: '#0F172A',
-                    light: '#1E293B',
-                },
-                softwhite: '#F8FAFC',
-                slate: '#334155',
-                muted: '#64748B',
+                obsidian: '#050505',
+                surface: '#111111',
+                edge: '#222222',
+                silver: '#999999',
+                accent: '#1539',
                 risk: {
-                    high: '#DC2626',
-                    medium: '#F59E0B',
-                    low: '#16A34A',
+                    high: '#ef4444',
+                    medium: '#f59e0b',
+                    low: '#22c55e',
                 },
-                border: '#E2E8F0',
             },
             fontFamily: {
-                sans: ['Inter', 'system-ui', 'sans-serif'],
+                sans: ['"Plus Jakarta Sans"', 'Inter', 'system-ui', 'sans-serif'],
+            },
+            maxWidth: {
+                container: '1100px',
             },
         },
     },
