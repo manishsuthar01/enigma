@@ -7,9 +7,9 @@ import { jsPDF } from 'jspdf';
 const CONTRACT_TYPES = [
     'Non-Disclosure Agreement (NDA)',
     'Cloud Service Agreement',
-    'Partnership Agreement',
     'Design Partner Agreement',
     'Professional Services Agreement',
+    'Partnership Agreement',
 ];
 
 // ── Left Panel: Form ────────────────────────────────────────────────────────

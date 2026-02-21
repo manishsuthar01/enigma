@@ -47,7 +47,7 @@ const HeroPage = () => {
             <div ref={inputRef} className="flex flex-col sm:flex-row items-center gap-4">
                 <a
                     href="/scan"
-                    className="flex items-center gap-2 bg-[#7c5cfc] text-white font-bold px-8 py-4 rounded-xl text-base hover:bg-[#6a4ce0] hover:scale-[1.02] transition-all duration-300"
+                    className="flex items-center gap-2 text-white font-bold px-8 py-4 rounded-xl text-base hover:bg-[#111] hover:scale-[1.02] transition-all duration-300"
                 >
                     Scan a Contract
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@ const HeroPage = () => {
                 </a>
                 <a
                     href="/generate"
-                    className="flex items-center gap-2 border border-[#222] text-white font-semibold px-8 py-4 rounded-xl text-base hover:bg-[#111] hover:border-[#333] hover:scale-[1.02] transition-all duration-300"
+                    className="flex items-center gap-2 bg-[#7c5cfc] border border-[#222] text-white font-semibold px-8 py-4 rounded-xl text-base hover:bg-[#111] hover:border-[#333] hover:scale-[1.02] transition-all duration-300"
                 >
                     Generate a Contract
                 </a>
