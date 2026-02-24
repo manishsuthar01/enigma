@@ -1,12 +1,12 @@
-const http = require('http');
-const https = require('https');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { ANALYSIS_PROMPT } = require('../utils/promptTemplate');
 
-// ── Mock fallback — used when the RAG server is unreachable ───────────────
+// ── Mock fallback — used when the API is unreachable ───────────────
 const MOCK_RESPONSE = {
     clauses: {},
     risk: {
         overallRisk: "Red",
-        summary: "Demo mode — RAG server unavailable. This is a placeholder response.",
+        summary: "Demo mode — API unavailable. This is a placeholder response.",
         risks: [
             {
                 severity: "High",
@@ -25,47 +25,34 @@ const MOCK_RESPONSE = {
     _demo_mode: true
 };
 
-// ── Forward file to RAG server as multipart upload ────────────────────────
-const forwardFileToRAG = (url, file) =>
-    new Promise((resolve, reject) => {
-        const boundary = `----FormBoundary${Date.now()}`;
-        const parsed = new URL(url);
-        const lib = parsed.protocol === 'https:' ? https : http;
+// ── Text Extraction Helper ────────────────────────────────────────────────
+const extractTextFromBuffer = async (buffer, mimetype) => {
+    try {
+        if (mimetype === 'text/plain') {
+            return buffer.toString('utf-8');
+        }
 
-        // Build multipart body
-        const header = Buffer.from(
-            `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="file"; filename="${file.originalname}"\r\n` +
-            `Content-Type: ${file.mimetype}\r\n\r\n`
-        );
-        const footer = Buffer.from(`\r\n--${boundary}--\r\n`);
-        const body = Buffer.concat([header, file.buffer, footer]);
+        if (mimetype === 'application/pdf') {
+            const data = new Uint8Array(buffer);
+            const loadingTask = pdfjs.getDocument({ data });
+            const pdfDocument = await loadingTask.promise;
 
-        const options = {
-            hostname: parsed.hostname,
-            port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-            path: parsed.pathname + parsed.search,
-            method: 'POST',
-            headers: {
-                'Content-Type': `multipart/form-data; boundary=${boundary}`,
-                'Content-Length': body.length,
-            },
-        };
+            let fullText = '';
+            for (let pageNum = 1; pageNum <= pdfDocument.numPages; pageNum++) {
+                const page = await pdfDocument.getPage(pageNum);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + '\n';
+            }
+            return fullText;
+        }
 
-        const req = lib.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => (data += chunk));
-            res.on('end', () => {
-                try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
-                catch { resolve({ status: res.statusCode, data }); }
-            });
-        });
-
-        req.on('error', reject);
-        req.setTimeout(120000, () => { req.destroy(); reject(new Error('RAG server timed out')); });
-        req.write(body);
-        req.end();
-    });
+        throw new Error(`Unsupported file type: ${mimetype}. Only TXT and PDF are supported.`);
+    } catch (err) {
+        console.error('❌  Text extraction failed:', err.message);
+        throw err;
+    }
+};
 
 // ── Controller ────────────────────────────────────────────────────────────
 const scanContract = async (req, res) => {
@@ -77,30 +64,61 @@ const scanContract = async (req, res) => {
         console.log('\n──────────────────────────────────────────────────');
         console.log('📥  SCAN REQUEST');
         console.log('──────────────────────────────────────────────────');
-        console.log(`   File: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB)`);
+        console.log(`   File: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB) | Mime: ${req.file.mimetype}`);
 
-        // ── Forward raw file to RAG server ──────────────────────────────
-        const ragBase = process.env.RAG_SERVER_URL;
-        if (!ragBase) {
-            console.warn('⚠️  RAG_SERVER_URL not set — returning mock response');
+        // ── Extract Text ──────────────────────────────────────────────────
+        console.log('⏳  Extracting text from file...');
+        const documentText = await extractTextFromBuffer(req.file.buffer, req.file.mimetype);
+        console.log(`✅  Text extracted, length: ${documentText.length} chars`);
+
+        if (!documentText.trim()) {
+            return res.status(400).json({ error: 'Could not extract any text from the uploaded document.' });
+        }
+
+        // ── Call Gemini API ───────────────────────────────────────────────
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            console.warn('⚠️  GEMINI_API_KEY not set — returning mock response');
             return res.json(MOCK_RESPONSE);
         }
 
-        const scanUrl = `${ragBase}/scan`;
-        console.log(`🚀  Forwarding file to RAG: ${scanUrl}`);
+        console.log(`🚀  Calling Gemini API for analysis...`);
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-        const ragResponse = await forwardFileToRAG(scanUrl, req.file);
-        console.log(`📨  RAG Response — Status: ${ragResponse.status}`);
+        const prompt = ANALYSIS_PROMPT.replace('{contractText}', documentText);
 
-        if (ragResponse.status !== 200) {
-            console.error('❌  RAG server error:', ragResponse.data);
-            return res.json(MOCK_RESPONSE);
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                responseMimeType: "application/json",
+            }
+        });
+
+        const responseText = result.response.text();
+        console.log(`📨  Gemini Response Received.`);
+
+        let riskData;
+        try {
+            riskData = JSON.parse(responseText);
+            console.log('✅  JSON response parsed successfully');
+        } catch (parseError) {
+            console.error('❌  Failed to parse Gemini JSON output:', responseText);
+            throw new Error('Invalid JSON from Gemini');
         }
 
-        res.json(ragResponse.data);
+        // Wrap riskData in the expected frontend format
+        const finalResponse = {
+            risk: riskData,
+            _demo_mode: false
+        };
+
+        res.json(finalResponse);
 
     } catch (error) {
         console.error('❌  Scan Controller Error:', error.message);
+        console.error(error); // Detailed error dump
+        if (error.stack) console.error('   Stack:', error.stack.split('\n')[1]);
         res.json(MOCK_RESPONSE);
     }
 };

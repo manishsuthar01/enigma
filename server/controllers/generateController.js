@@ -1,7 +1,7 @@
-const http = require('http');
-const https = require('https');
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { GENERATE_PROMPT } = require('../utils/promptTemplate');
 
-// ── Fallback mock contract — fires if RAG server is unreachable ─────────────
+// ── Fallback mock contract — fires if API fails ─────────────
 const buildMockContract = (type, party1, party2, details) => `${type.toUpperCase()}
 
 This ${type} ("Agreement") is entered into as of ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}, by and between:
@@ -43,39 +43,6 @@ _______________________                    _______________________
 Signature                                  Signature
 Date: _______________                      Date: _______________`;
 
-// ── Minimal HTTP/HTTPS fetch helper (no axios dependency) ──────────────────
-const makeRequest = (url, payload) =>
-    new Promise((resolve, reject) => {
-        const body = JSON.stringify(payload);
-        const parsed = new URL(url);
-        const lib = parsed.protocol === 'https:' ? https : http;
-
-        const options = {
-            hostname: parsed.hostname,
-            port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
-            path: parsed.pathname + parsed.search,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body),
-            },
-        };
-
-        const req = lib.request(options, (res) => {
-            let data = '';
-            res.on('data', (chunk) => (data += chunk));
-            res.on('end', () => {
-                try { resolve({ status: res.statusCode, data: JSON.parse(data) }); }
-                catch { resolve({ status: res.statusCode, data: { contract_text: data } }); }
-            });
-        });
-
-        req.on('error', reject);
-        req.setTimeout(120000, () => { req.destroy(); reject(new Error('RAG server timed out')); });
-        req.write(body);
-        req.end();
-    });
-
 // ── Controller ─────────────────────────────────────────────────────────────
 const generateContract = async (req, res) => {
     const SEP = '─'.repeat(50);
@@ -98,77 +65,49 @@ const generateContract = async (req, res) => {
         }
         console.log('✅  Validation passed');
 
-        // ── Build description ─────────────────────────────────────────────
-        const description = [
-            `I want to generate a ${contractType}`,
-            `between ${party1.trim()} (Party A) and ${party2.trim()} (Party B)`,
-            details?.trim() ? `with the following terms: ${details.trim()}` : '',
-        ].filter(Boolean).join(', ');
-
-        const ragPayload = { description };
-        console.log('\n📤  RAG Payload:');
-        console.log(JSON.stringify(ragPayload, null, 2));
-
         // ── Env check ─────────────────────────────────────────────────────
-        const ragUrl = process.env.RAG_SERVER_URL;
-        const ragPath = process.env.RAG_SERVER_ENDPOINT;
-        const endpoint = ragUrl ? ragUrl.replace(/\/$/, '') + ragPath : null;
+        const apiKey = process.env.GEMINI_API_KEY;
 
         console.log('\n🔧  Config:');
-        console.log('   RAG_SERVER_URL     :', ragUrl || '⚠️  NOT SET');
-        console.log('   RAG_SERVER_ENDPOINT:', ragPath);
-        console.log('   Full endpoint      :', endpoint || '⚠️  SKIPPED (no URL)');
+        console.log('   GEMINI_API_KEY     :', apiKey ? '✅ SET' : '⚠️  NOT SET');
 
-        if (!ragUrl) {
-            console.warn('\n⚠️  RAG_SERVER_URL not set — using mock fallback');
+        if (!apiKey) {
+            console.warn('\n⚠️  GEMINI_API_KEY not set — using mock fallback');
             return res.json({
                 contract: buildMockContract(contractType, party1, party2, details),
                 _demo_mode: true,
             });
         }
 
-        // ── Call RAG server ───────────────────────────────────────────────
-        console.log('\n🚀  Calling RAG server...');
+        // ── Call Gemini API ───────────────────────────────────────────────
+        console.log('\n🚀  Calling Gemini API...');
         try {
-            const ragRes = await makeRequest(endpoint, ragPayload);
+            const genAI = new GoogleGenerativeAI(apiKey);
 
-            console.log('\n📨  RAG Response:');
-            console.log('   Status :', ragRes.status);
-            // console.log('   Body   :', JSON.stringify(ragRes.data, null, 2));
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-            if (ragRes.status >= 200 && ragRes.status < 300) {
-                // Validate the expected 'contract' field exists
-                const contractText = ragRes.data?.contract
-                    || ragRes.data?.contract_text
-                    || ragRes.data?.text
-                    || ragRes.data?.content
-                    || ragRes.data?.result;
+            const prompt = GENERATE_PROMPT
+                .replace('{contractType}', contractType)
+                .replace('{party1}', party1)
+                .replace('{party2}', party2)
+                .replace('{details}', details || "None provided.");
 
-                if (!contractText) {
-                    console.warn('⚠️  No usable text field in RAG response');
-                    console.warn('   Keys received:', Object.keys(ragRes.data || {}));
-                    throw new Error('"contract" field absent in RAG response');
-                }
+            console.log('\n📤  Prompt sent to Gemini:\n', prompt);
 
-                if (!ragRes.data?.contract) {
-                    console.warn('⚠️  "contract" key missing — used fallback key from RAG response');
-                }
+            const result = await model.generateContent(prompt);
+            const response = result.response;
+            const contractText = response.text();
 
-                console.log('✅  Contract extracted, length:', contractText.length, 'chars');
-                return res.json({ contract: contractText, _demo_mode: false });
+            console.log('\n📨  Gemini Response Received.');
+            console.log('✅  Contract extracted, length:', contractText.length, 'chars');
 
-            } else {
-                console.error('\n❌  RAG server returned error:');
-                console.error('   Status:', ragRes.status);
-                console.error('   Body  :', JSON.stringify(ragRes.data, null, 2));
-                throw new Error(`RAG server returned status ${ragRes.status}: ${JSON.stringify(ragRes.data)}`);
-            }
+            return res.json({ contract: contractText.trim(), _demo_mode: false });
 
-        } catch (ragError) {
-            console.error('\n❌  RAG call failed:');
-            console.error('   Message:', ragError.message);
-            if (ragError.stack) {
-                console.error('   Stack  :', ragError.stack.split('\n').slice(0, 4).join('\n   '));
+        } catch (apiError) {
+            console.error('\n❌  Gemini API call failed:');
+            console.error('   Message:', apiError.message);
+            if (apiError.stack) {
+                console.error('   Stack  :', apiError.stack.split('\n').slice(0, 4).join('\n   '));
             }
             console.warn('   → Falling back to mock contract\n');
             return res.json({
@@ -186,4 +125,5 @@ const generateContract = async (req, res) => {
 };
 
 module.exports = { generateContract };
+
 
