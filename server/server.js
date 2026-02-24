@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const morgan = require('morgan');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -57,12 +58,8 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
-// ── Minimal Request Logger ──────────────────────────────────────────────────
-app.use((req, _res, next) => {
-    const ts = new Date().toISOString().slice(11, 19);
-    console.log(`[${ts}] ${req.method} ${req.originalUrl} — ${req.ip}`);
-    next();
-});
+// ── Request Logger (Morgan) ─────────────────────────────────────────────────
+app.use(morgan('combined'));
 
 // ── API Routes ──────────────────────────────────────────────────────────────
 app.use('/api/scan', require('./routes/scan'));
@@ -98,11 +95,6 @@ app.use(errorHandler);
 // ── Start Server ────────────────────────────────────────────────────────────
 const server = app.listen(PORT, () => {
     console.log(`\n✅  Server running on http://localhost:${PORT}`);
-    console.log(`   RAG URL      : ${process.env.RAG_SERVER_URL || '⚠️  not set (mock mode)'}`);
-    console.log(`   RAG Endpoint : ${process.env.RAG_SERVER_ENDPOINT || '/generate-contract'}`);
-    console.log(`   Gemini Key   : ${process.env.GEMINI_API_KEY ? 'found ✅' : '⚠️  missing'}`);
-    console.log(`   Security     : helmet ✅ | rate-limit ✅ | error-handler ✅`);
-    console.log(`   Static files : ${clientDist}\n`);
 });
 
 server.on('error', (err) => {
