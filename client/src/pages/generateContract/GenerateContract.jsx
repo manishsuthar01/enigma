@@ -342,6 +342,13 @@ const GenerateContract = () => {
             setResult(data);
             setTimeout(() => {
                 gsap.from('.gen-output-panel', { opacity: 0, x: 10, duration: 0.5, ease: 'power3.out' });
+                // Auto-scroll to output on mobile devices so the user doesn't miss the result
+                if (window.innerWidth < 1024) {
+                    const outputEl = document.getElementById('contract-output-panel');
+                    if (outputEl) {
+                        outputEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
             }, 80);
         } catch (err) {
             setError(typeof err === 'string' ? err : err.message || 'Generation failed.');
@@ -380,7 +387,7 @@ const GenerateContract = () => {
                 {/* Split Panel */}
                 <div
                     ref={panelRef}
-                    className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden border border-[#222] h-[82vh] min-h-[600px]"
+                    className="grid grid-cols-1 lg:grid-cols-2 rounded-2xl overflow-hidden border border-[#222] lg:h-[82vh] min-h-[600px]"
                 >
                     {/* LEFT — Form */}
                     <div className="bg-[#0a0a0a] p-6 md:p-8 flex flex-col border-b lg:border-b-0 lg:border-r border-[#222]">
@@ -388,7 +395,7 @@ const GenerateContract = () => {
                     </div>
 
                     {/* RIGHT — Output */}
-                    <div className="bg-[#0a0a0a] p-6 md:p-8 flex flex-col overflow-hidden">
+                    <div id="contract-output-panel" className="gen-output-panel bg-[#0a0a0a] p-6 md:p-8 flex flex-col overflow-hidden">
                         <OutputPanel
                             loading={loading}
                             error={error}
